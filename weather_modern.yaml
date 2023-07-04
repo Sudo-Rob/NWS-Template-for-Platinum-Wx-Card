@@ -1,0 +1,497 @@
+# Updated YAML file using the 'modern' format: https://www.home-assistant.io/integrations/template#configuration-variables
+template:
+  - sensor:
+      # Feels-like temperature sensor template inspired by @masterkenobi:
+      # References:
+      # http://solberg.snr.missouri.edu/gcc/OFCMWindchillReport.pdf
+      # https://www.weather.gov/media/epz/wxcalc/windChill.pdf
+      # https://www.wpc.ncep.noaa.gov/html/heatindex_equation.shtml
+      # https://journals.ametsoc.org/downloadpdf/journals/apme/23/12/1520-0450_1984_023_1674_ausoat_2_0_co_2.xml
+      - name: kbwi_feels_like_temperature
+        unit_of_measurement: "°F"
+        state: >
+          {% set T = states( 'sensor.kbwi_temperature' ) | float %}
+          {% set RH = states( 'sensor.kbwi_relative_humidity' ) | float %}
+          {% set WS = states( 'sensor.kbwi_wind_speed' ) | float %}
+          {% set WC = T | float %}
+
+          {% if T <= 70 and WS >= 3 %}
+            {% set WC = 35.74 + (0.6215*T) - 35.75*(WS**0.16) + ((0.4275*T)*(WS**0.16)) %}
+          {% endif %}
+
+          {% set STEADMAN_HI = 0.5 * (T + 61.0 + ((T-68.0)*1.2) + (RH*0.094)) %}
+          {% if STEADMAN_HI >= 80 %}
+            {% set ROTHFUSZ_HI = -42.379 + 2.04901523*T + 10.14333127*RH - 0.22475541*T*RH - 0.00683783*T*T - 0.05481717*RH*RH + 0.00122874*T*T*RH + 0.00085282*T*RH*RH - 0.00000199*T*T*RH*RH %}
+            {% set HI = ROTHFUSZ_HI %}
+            {% if RH < 13 and 80 < T < 112 %}
+              {% set ADJUSTMENT = ((13-RH)/4)*((17-(T-95)|abs)/17)**0.5 %}
+              {% set HI = HI - ADJUSTMENT %}
+            {% elif RH > 85 and 80 < T < 87 %}
+              {% set ADJUSTMENT = ((RH-85)/10) * ((87-T)/5) %}
+              {% set HI = HI + ADJUSTMENT %}
+            {% endif %}
+          {% else %}
+            {% set HI = STEADMAN_HI %}
+          {% endif %}
+
+          {% if T < 50 %}
+            {% set FL = WC %}
+          {% elif 50 <= T < 70 %}
+            {% set FL = (((70-T)/20)*WC) + (((T-50)/20)*HI) %}
+          {% elif T >= 70 %}
+            {% set FL = HI %}
+          {% endif %}
+          {{- FL | round(1) -}}
+  #Temporary sensor to debug midnight-to-6AM assignments.
+  - binary_sensor:
+      - name: after_midnight
+        state: >-
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'')) | int < 6 -%} True
+          {% else -%} False
+          {% endif %}
+
+  #Temporary sensor to convert attribute [0].datetime to day of week (current day):
+  - sensor:
+      - name: datetime2dow
+        state: >
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | as_timestamp() | timestamp_custom('%a') }}
+
+      # Valid update time for weather card:
+      # Entity update time:
+      - name: nws_datetime_0
+        state: >
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[0].datetime }}
+
+      # Current Observations
+      # Modify 'sensor.xxx' or 'weather.xxx' to align with your NWS station ID - Don't use mine unless you want to know what's happening were I am...
+      - name: nws_pressure
+        unit_of_measurement: "inHg"
+        state: >
+          {{ states( 'sensor.kbwi_barometric_pressure' ) }}
+      - name: nws_dewpoint
+        unit_of_measurement: "°F"
+        state: >
+          {{ states( 'sensor.kbwi_dew_point' ) }}
+      - name: nws_heatindex
+        unit_of_measurement: "°F"
+        state: >
+          {{ states( 'sensor.kbwi_heat_index' ) }}
+      - name: nws_humidity
+        unit_of_measurement: "%"
+        state: >
+          {{ states( 'sensor.kbwi_relative_humidity' ) }}
+      - name: nws_temperature
+        unit_of_measurement: "°F"
+        state: >
+          {{ states( 'sensor.kbwi_temperature') }}
+          {{ nws_temperature }}
+      - name: nws_visibility
+        unit_of_measurement: "mi"
+        state: >
+          {{ state_attr('weather.kbwi_daynight', 'visibility') }}
+      - name: nws_daily_summary
+        state: >
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[0].detailed_description | truncate(254,true,'…',0) }}
+      - name: nws_windchill
+        state: >
+          value_template: "{{ states('sensor.kbwi_wind_chill') }}"
+      - name: nws_wind_bearing
+        state: >
+          {{ states('sensor.kbwi_wind_direction') }}
+      - name: nws_wind_gust
+        state: >
+          {{ states('sensor.kbwi_wind_gust') }}
+      - name: nws_wind_speed
+        state: >
+          {{ states('sensor.kbwi_wind_speed') }}
+      - name: nws_current_conditions
+        state: >
+          {{ states('weather.kbwi_daynight') | capitalize }}
+      - name: nws_current_conditions_0
+        state: >
+          {{ states('weather.kbwi_daynight') }}
+      - name: nws_rain_chance_0
+        unit_of_measurement: "%"
+        state: >
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[0].precipitation_probability }}
+
+        # not provided by NWS integration - supplies value vs. NaN
+      - name: nws_rain_amount_today
+        state: >
+          0
+      - name: nws_daytime_low
+        unit_of_measurement: "°F"
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[0].temperature }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[1].temperature }}
+          {% else -%}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[0].temperature }}
+          {% endif -%}
+      - name: nws_daytime_high
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[1].temperature }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[0].temperature }}
+          {% else -%}
+          {{ states( 'sensor.maxtempdaily' ) }}
+          {% endif -%}
+
+      # Now for the Forecast Data
+
+      - name: nws_forecast_low_temp_1
+        unit_of_measurement: "°F"
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[4].temperature }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[3].temperature }}
+          {% else -%}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[2].temperature }}
+          {% endif -%}
+      - name: nws_forecast_high_temp_1
+        unit_of_measurement: "°F"
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[3].temperature }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[2].temperature }}
+          {% else -%}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[1].temperature }}
+          {% endif -%}
+      - name: nws_forecast_icon_1
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[3].condition }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[2].condition }}
+          {% else %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[1].condition }}
+          {% endif %}
+      - name: nws_summary_1
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[3].detailed_description | truncate(254,true,'…',0) }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[2].detailed_description | truncate(254,true,'…',0) }}
+          {% else %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[1].detailed_description | truncate(254,true,'…',0) }}
+          {% endif %}
+      - name: nws_rain_chance_1
+        unit_of_measurement: "%"
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[3].precipitation_probability }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[2].precipitation_probability }}
+          {% else %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[1].precipitation_probability }}
+          {% endif %}
+      - name: nws_forecast_low_temp_2
+        unit_of_measurement: "°F"
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[6].temperature }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[5].temperature }}
+          {% else -%}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[4].temperature }}
+          {% endif -%}
+      - name: nws_forecast_high_temp_2
+        unit_of_measurement: "°F"
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[5].temperature }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[4].temperature }}
+          {% else -%}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[3].temperature }}
+          {% endif -%}
+      - name: nws_forecast_icon_2
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[5].condition }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[4].condition }}
+          {% else %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[3].condition }}
+          {% endif %}
+      - name: nws_summary_2
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[5].detailed_description | truncate(254,true,'…',0) }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[4].detailed_description | truncate(254,true,'…',0) }}
+          {% else %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[3].detailed_description | truncate(254,true,'…',0) }}
+          {% endif %}
+      - name: nws_rain_chance_2
+        unit_of_measurement: "%"
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[5].precipitation_probability }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[4].precipitation_probability }}
+          {% else %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[3].precipitation_probability }}
+          {% endif %}
+      - name: nws_forecast_low_temp_3
+        unit_of_measurement: "°F"
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[8].temperature }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[7].temperature }}
+          {% else -%}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[6].temperature }}
+          {% endif -%}
+      - name: nws_forecast_high_temp_3
+        unit_of_measurement: "°F"
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[7].temperature }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[6].temperature }}
+          {% else -%}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[5].temperature }}
+          {% endif -%}
+      - name: nws_forecast_icon_3
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[7].condition }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[6].condition }}
+          {% else %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[5].condition }}
+          {% endif %}
+      - name: nws_summary_3
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[7].detailed_description | truncate(254,true,'…',0) }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[6].detailed_description | truncate(254,true,'…',0) }}
+          {% else %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[5].detailed_description | truncate(254,true,'…',0) }}
+          {% endif %}
+      - name: nws_rain_chance_3
+        unit_of_measurement: "%"
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[7].precipitation_probability }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[6].precipitation_probability }}
+          {% else %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[5].precipitation_probability }}
+          {% endif %}
+      - name: nws_forecast_low_temp_4
+        unit_of_measurement: "°F"
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[10].temperature }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[9].temperature }}
+          {% else -%}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[8].temperature }}
+          {% endif -%}
+      - name: nws_forecast_high_temp_4
+        unit_of_measurement: "°F"
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[9].temperature }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[8].temperature }}
+          {% else -%}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[7].temperature }}
+          {% endif -%}
+      - name: nws_forecast_icon_4
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[9].condition }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[8].condition }}
+          {% else %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[7].condition }}
+          {% endif %}
+      - name: nws_summary_4
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[9].detailed_description | truncate(254,true,'…',0) }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[8].detailed_description | truncate(254,true,'…',0) }}
+          {% else %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[7].detailed_description | truncate(254,true,'…',0) }}
+          {% endif %}
+      - name: nws_rain_chance_4
+        unit_of_measurement: "%"
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[9].precipitation_probability }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[8].precipitation_probability }}
+          {% else %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[7].precipitation_probability }}
+          {% endif %}
+      - name: nws_forecast_low_temp_5
+        unit_of_measurement: "°F"
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[12].temperature }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[11].temperature }}
+          {% else -%}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[10].temperature }}
+          {% endif -%}
+      - name: nws_forecast_high_temp_5
+        unit_of_measurement: "°F"
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[11].temperature }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[10].temperature }}
+          {% else -%}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[9].temperature }}
+          {% endif -%}
+      - name: nws_forecast_icon_5
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[11].condition }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[10].condition }}
+          {% else %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[9].condition }}
+          {% endif %}
+      - name: nws_summary_5
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[11].detailed_description | truncate(254,true,'…',0) }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[10].detailed_description | truncate(254,true,'…',0) }}
+          {% else %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[9].detailed_description | truncate(254,true,'…',0) }}
+          {% endif %}
+      - name: nws_rain_chance_5
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[11].precipitation_probability }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[10].precipitation_probability }}
+          {% else %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[9].precipitation_probability }}
+          {% endif %}
+
+      - name: nws_short_forecast_0
+        state: >
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[0].short_forecast }}
+      - name: nws_short_forecast_1
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[3].short_forecast }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true -%}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[2].short_forecast }}
+          {% else -%}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[1].short_forecast }}
+          {% endif %}
+      - name: nws_short_forecast_2
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[5].short_forecast }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[4].short_forecast }}
+          {% else %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[3].short_forecast }}
+          {% endif %}
+      - name: nws_short_forecast_3
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[7].short_forecast }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[6].short_forecast }}
+          {% else %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[5].short_forecast }}
+          {% endif %}
+      - name: nws_short_forecast_4
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[9].short_forecast }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[8].short_forecast }}
+          {% else %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[7].short_forecast }}
+          {% endif %}
+      - name: nws_short_forecast_5
+        state: >
+          {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[11].short_forecast }}
+          {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[10].short_forecast }}
+          {% else %}
+          {{ state_attr('weather.kbwi_daynight', 'forecast')[9].short_forecast }}
+          {% endif %}
+      - name: summary_0
+        state: >
+          {{ states.sensor.weather.kbwi_daynight }}
+        attributes:
+          detailed_forecast: >-
+            {{ state_attr('weather.kbwi_daynight', 'forecast')[0].detailed_description | string }}
+      - name: summary_1
+        state: >
+          {{ states.sensor.weather.kbwi_daynight }}
+        attributes:
+          detailed_forecast: >-
+            {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) -%}
+            {{ state_attr('weather.kbwi_daynight', 'forecast')[3].detailed_description | string }}
+            {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true -%}
+            {{ state_attr('weather.kbwi_daynight', 'forecast')[2].detailed_description | string }}
+            {% else -%}
+            {{ state_attr('weather.kbwi_daynight', 'forecast')[1].detailed_description | string }}
+            {% endif %}
+      - name: summary_2
+        state: >
+          {{ states.sensor.weather.kbwi_daynight }}
+        attributes:
+          detailed_forecast: >-
+            {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) -%}
+            {{ state_attr('weather.kbwi_daynight', 'forecast')[5].detailed_description | string }}
+            {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true -%}
+            {{ state_attr('weather.kbwi_daynight', 'forecast')[4].detailed_description | string }}
+            {% else -%}
+            {{ state_attr('weather.kbwi_daynight', 'forecast')[3].detailed_description | string }}
+            {% endif %}
+      - name: summary_3
+        state: >
+          {{ states.sensor.weather.kbwi_daynight }}
+        attributes:
+          detailed_forecast: >-
+            {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) -%}
+            {{ state_attr('weather.kbwi_daynight', 'forecast')[7].detailed_description | string }}
+            {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true -%}
+            {{ state_attr('weather.kbwi_daynight', 'forecast')[6].detailed_description | string }}
+            {% else -%}
+            {{ state_attr('weather.kbwi_daynight', 'forecast')[5].detailed_description | string }}
+            {% endif %}
+      - name: summary_4
+        state: >
+          {{ states.sensor.weather.kbwi_daynight }}
+        attributes:
+          detailed_forecast: >-
+            {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) -%}
+            {{ state_attr('weather.kbwi_daynight', 'forecast')[9].detailed_description | string }}
+            {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true -%}
+            {{ state_attr('weather.kbwi_daynight', 'forecast')[8].detailed_description | string }}
+            {% else -%}
+            {{ state_attr('weather.kbwi_daynight', 'forecast')[7].detailed_description | string }}
+            {% endif %}
+      - name: summary_5
+        state: >
+          {{ states.sensor.weather.kbwi_daynight }}
+        attributes:
+          detailed_forecast: >-
+            {% if (state_attr('weather.kbwi_daynight', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) -%}
+            {{ state_attr('weather.kbwi_daynight', 'forecast')[11].detailed_description | string }}
+            {% elif (state_attr('weather.kbwi_daynight', 'forecast')[0].daytime) == true -%}
+            {{ state_attr('weather.kbwi_daynight', 'forecast')[10].detailed_description | string }}
+            {% else -%}
+            {{ state_attr('weather.kbwi_daynight', 'forecast')[9].detailed_description | string }}
+            {% endif %}
