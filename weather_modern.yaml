@@ -65,12 +65,12 @@ template:
         state: >
           {{ state_attr('sensor.daily_forecast', 'forecast')[0].datetime }}
 
-      - name: nws_daily_summary
+      - name: kbwi_daily_summary
         state: >
           {{ state_attr('sensor.daily_forecast', 'forecast')[0].detailed_description | truncate(254,true,'…',0) }}
 
       #       Scrape wind gust speed from detailed forecast (needs debugging)
-      - name: nws_wind_gust
+      - name: kbwi_wind_gust
         state: >
           {{ state_attr('sensor.daily_forecast', 'forecast')[0].detailed_description | regex_findall_index(find='with gusts as high as .. mph') | regex_findall_index("\d+(?= mph)") if value is search('^\d{2}$') else 0 }}
           {{ (value | regex_findall_index('^\d{2}$')) if value is search('^\d{2}$') else 0 }}
@@ -346,7 +346,7 @@ template:
       - name: kxxx_short_forecast_0
         state: >
           {{ state_attr('sensor.daily_forecast', 'forecast')[0].short_forecast }}
-      - name: nws_short_forecast_1
+      - name: kbwi_short_forecast_1
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[3].short_forecast }}
