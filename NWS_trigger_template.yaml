@@ -1,0 +1,21 @@
+# Append this to configuration.yaml
+template:
+  - trigger:
+      - platform: time_pattern
+        minutes: "/15"
+      - platform: homeassistant
+        event: start
+    action:
+      - service: weather.get_forecasts
+        data:
+          type: twice_daily
+        target:
+          entity_id: weather.kxxx
+        response_variable: daily
+    sensor:
+      - name: Daily Forecast
+        unique_id: daily_forecast
+        state: "{{ now().isoformat() }}"
+        icon: mdi:hours-24
+        attributes:
+          forecast: "{{ daily['weather.kxxx'].forecast }}"
