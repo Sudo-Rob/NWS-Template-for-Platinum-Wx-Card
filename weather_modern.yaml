@@ -1,6 +1,3 @@
-# Updated YAML file using the 'modern' format: https://www.home-assistant.io/integrations/template#configuration-variables
-# Replace 'kxxx' station IDs with nearby station: https://www.cnrfc.noaa.gov/metar.php
-# As of this update (2014-05-19) the 11 NWS Integration native entities (i.e. sensor.kxxx_<Entity ID>) have been unreliable.  These can be replaced with other sources of data until these problems are mitigated. 
 template:
   - sensor:
       # Feels-like temperature sensor template inspired by @masterkenobi:
@@ -9,11 +6,12 @@ template:
       # https://www.weather.gov/media/epz/wxcalc/windChill.pdf
       # https://www.wpc.ncep.noaa.gov/html/heatindex_equation.shtml
       # https://journals.ametsoc.org/downloadpdf/journals/apme/23/12/1520-0450_1984_023_1674_ausoat_2_0_co_2.xml
-      - name: kxxx_feels_like
+
+      - name: kbwi_feels_like
         state: >-
-          {% set T = states( 'sensor.kxxx_temperature' ) | float %}
-          {% set RH = states( 'sensor.kxxx_relative_humidity' ) | float %}
-          {% set WS = states( 'sensor.kxxx_wind_speed' ) | float %}
+          {% set T = states( 'sensor.kbwi_temperature' ) | float %}
+          {% set RH = states( 'sensor.kbwi_relative_humidity' ) | float %}
+          {% set WS = states( 'sensor.kbwi_wind_speed' ) | float %}
           {% set WC = T | float %}
 
           {% if T <= 70 and WS >= 3 %}
@@ -34,7 +32,6 @@ template:
           {% else %}
             {% set HI = STEADMAN_HI %}
           {% endif %}
-
           {% if T < 50 %}
             {% set FL = WC %}
           {% elif 50 <= T < 70 %}
@@ -44,8 +41,13 @@ template:
           {% endif %}
           {{- FL | round(1) -}}
 
+  #  - sensor:
+  #      - name: current_conditions
+  #        state:
+  #          { { states('sensor.cc_ellicott_city_weather_condition' ) | lower } }
+
   - sensor:
-  #Temporary sensor to debug midnight-to-6AM assignments.
+  #Temporary sensor to debug midnight-to-6AM assignments:
   - binary_sensor:
       - name: after_midnight
         state: >-
@@ -61,7 +63,7 @@ template:
 
       # Valid update time for weather card:
       # Entity update time:
-      - name: kxxx_datetime_0
+      - name: kbwi_datetime_0
         state: >
           {{ state_attr('sensor.daily_forecast', 'forecast')[0].datetime }}
 
@@ -75,16 +77,16 @@ template:
           {{ state_attr('sensor.daily_forecast', 'forecast')[0].detailed_description | regex_findall_index(find='with gusts as high as .. mph') | regex_findall_index("\d+(?= mph)") if value is search('^\d{2}$') else 0 }}
           {{ (value | regex_findall_index('^\d{2}$')) if value is search('^\d{2}$') else 0 }}
 
-      - name: kxxx_precipitation_probability
+      - name: kbwi_precipitation_probability
         unit_of_measurement: "%"
         state: >
           {{ state_attr('sensor.daily_forecast', 'forecast')[0].precipitation_probability }}
 
       # not provided by NWS integration - supplies value vs. NaN
-      - name: kxxx_rain_amount_today
+      - name: kbwi_rain_amount_today
         state: >
           0
-      - name: kxxx_nighttime_low
+      - name: kbwi_nighttime_low
         unit_of_measurement: "°F"
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].is_daytime) == false %}
@@ -92,7 +94,7 @@ template:
           {% else -%}
           {{ state_attr('sensor.daily_forecast', 'forecast')[1].temperature }}
           {% endif -%}
-      - name: kxxx_daytime_high
+      - name: kbwi_daytime_high
         unit_of_measurement: "°F"
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].is_daytime) == true %}
@@ -103,7 +105,7 @@ template:
 
       # Now for the Forecast Data
 
-      - name: kxxx_forecast_low_temp_1
+      - name: kbwi_forecast_low_temp_1
         unit_of_measurement: "°F"
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
@@ -113,7 +115,7 @@ template:
           {% else -%}
           {{ state_attr('sensor.daily_forecast', 'forecast')[2].temperature }}
           {% endif -%}
-      - name: kxxx_forecast_high_temp_1
+      - name: kbwi_forecast_high_temp_1
         unit_of_measurement: "°F"
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
@@ -123,7 +125,7 @@ template:
           {% else -%}
           {{ state_attr('sensor.daily_forecast', 'forecast')[1].temperature }}
           {% endif -%}
-      - name: kxxx_forecast_icon_1
+      - name: kbwi_forecast_icon_1
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[3].condition }}
@@ -132,7 +134,7 @@ template:
           {% else %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[1].condition }}
           {% endif %}
-      - name: kxxx_summary_1
+      - name: kbwi_summary_1
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[3].detailed_description | truncate(254,true,'…',0) }}
@@ -141,7 +143,7 @@ template:
           {% else %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[1].detailed_description | truncate(254,true,'…',0) }}
           {% endif %}
-      - name: kxxx_rain_chance_1
+      - name: kbwi_rain_chance_1
         unit_of_measurement: "%"
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
@@ -151,7 +153,7 @@ template:
           {% else %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[1].precipitation_probability }}
           {% endif %}
-      - name: kxxx_forecast_low_temp_2
+      - name: kbwi_forecast_low_temp_2
         unit_of_measurement: "°F"
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
@@ -161,7 +163,7 @@ template:
           {% else -%}
           {{ state_attr('sensor.daily_forecast', 'forecast')[4].temperature }}
           {% endif -%}
-      - name: kxxx_forecast_high_temp_2
+      - name: kbwi_forecast_high_temp_2
         unit_of_measurement: "°F"
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
@@ -171,7 +173,7 @@ template:
           {% else -%}
           {{ state_attr('sensor.daily_forecast', 'forecast')[3].temperature }}
           {% endif -%}
-      - name: kxxx_forecast_icon_2
+      - name: kbwi_forecast_icon_2
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[5].condition }}
@@ -180,7 +182,7 @@ template:
           {% else %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[3].condition }}
           {% endif %}
-      - name: kxxx_summary_2
+      - name: kbwi_summary_2
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[5].detailed_description | truncate(254,true,'…',0) }}
@@ -189,7 +191,7 @@ template:
           {% else %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[3].detailed_description | truncate(254,true,'…',0) }}
           {% endif %}
-      - name: kxxx_rain_chance_2
+      - name: kbwi_rain_chance_2
         unit_of_measurement: "%"
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
@@ -199,7 +201,7 @@ template:
           {% else %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[3].precipitation_probability }}
           {% endif %}
-      - name: kxxx_forecast_low_temp_3
+      - name: kbwi_forecast_low_temp_3
         unit_of_measurement: "°F"
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
@@ -209,7 +211,7 @@ template:
           {% else -%}
           {{ state_attr('sensor.daily_forecast', 'forecast')[6].temperature }}
           {% endif -%}
-      - name: kxxx_forecast_high_temp_3
+      - name: kbwi_forecast_high_temp_3
         unit_of_measurement: "°F"
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
@@ -219,7 +221,7 @@ template:
           {% else -%}
           {{ state_attr('sensor.daily_forecast', 'forecast')[5].temperature }}
           {% endif -%}
-      - name: kxxx_forecast_icon_3
+      - name: kbwi_forecast_icon_3
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[7].condition }}
@@ -228,7 +230,7 @@ template:
           {% else %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[5].condition }}
           {% endif %}
-      - name: kxxx_summary_3
+      - name: kbwi_summary_3
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[7].detailed_description | truncate(254,true,'…',0) }}
@@ -237,7 +239,7 @@ template:
           {% else %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[5].detailed_description | truncate(254,true,'…',0) }}
           {% endif %}
-      - name: kxxx_rain_chance_3
+      - name: kbwi_rain_chance_3
         unit_of_measurement: "%"
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
@@ -247,7 +249,7 @@ template:
           {% else %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[5].precipitation_probability }}
           {% endif %}
-      - name: kxxx_forecast_low_temp_4
+      - name: kbwi_forecast_low_temp_4
         unit_of_measurement: "°F"
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
@@ -257,7 +259,7 @@ template:
           {% else -%}
           {{ state_attr('sensor.daily_forecast', 'forecast')[8].temperature }}
           {% endif -%}
-      - name: kxxx_forecast_high_temp_4
+      - name: kbwi_forecast_high_temp_4
         unit_of_measurement: "°F"
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
@@ -267,7 +269,7 @@ template:
           {% else -%}
           {{ state_attr('sensor.daily_forecast', 'forecast')[7].temperature }}
           {% endif -%}
-      - name: kxxx_forecast_icon_4
+      - name: kbwi_forecast_icon_4
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[9].condition }}
@@ -276,7 +278,7 @@ template:
           {% else %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[7].condition }}
           {% endif %}
-      - name: kxxx_summary_4
+      - name: kbwi_summary_4
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[9].detailed_description | truncate(254,true,'…',0) }}
@@ -285,7 +287,7 @@ template:
           {% else %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[7].detailed_description | truncate(254,true,'…',0) }}
           {% endif %}
-      - name: kxxx_rain_chance_4
+      - name: kbwi_rain_chance_4
         unit_of_measurement: "%"
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
@@ -295,7 +297,7 @@ template:
           {% else %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[7].precipitation_probability }}
           {% endif %}
-      - name: kxxx_forecast_low_temp_5
+      - name: kbwi_forecast_low_temp_5
         unit_of_measurement: "°F"
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
@@ -305,7 +307,7 @@ template:
           {% else -%}
           {{ state_attr('sensor.daily_forecast', 'forecast')[10].temperature }}
           {% endif -%}
-      - name: kxxx_forecast_high_temp_5
+      - name: kbwi_forecast_high_temp_5
         unit_of_measurement: "°F"
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
@@ -315,7 +317,7 @@ template:
           {% else -%}
           {{ state_attr('sensor.daily_forecast', 'forecast')[9].temperature }}
           {% endif -%}
-      - name: kxxx_forecast_icon_5
+      - name: kbwi_forecast_icon_5
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[11].condition }}
@@ -324,7 +326,7 @@ template:
           {% else %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[9].condition }}
           {% endif %}
-      - name: kxxx_summary_5
+      - name: kbwi_summary_5
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[11].detailed_description | truncate(254,true,'…',0) }}
@@ -333,7 +335,7 @@ template:
           {% else %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[9].detailed_description | truncate(254,true,'…',0) }}
           {% endif %}
-      - name: kxxx_rain_chance_5
+      - name: kbwi_rain_chance_5
         state: >
           {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
           {{ state_attr('sensor.daily_forecast', 'forecast')[11].precipitation_probability }}
@@ -343,61 +345,13 @@ template:
           {{ state_attr('sensor.daily_forecast', 'forecast')[9].precipitation_probability }}
           {% endif %}
 
-      - name: kxxx_short_forecast_0
-        state: >
-          {{ state_attr('sensor.daily_forecast', 'forecast')[0].short_forecast }}
-      - name: kbwi_short_forecast_1
-        state: >
-          {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
-          {{ state_attr('sensor.daily_forecast', 'forecast')[3].short_forecast }}
-          {% elif (state_attr('sensor.daily_forecast', 'forecast')[0].is_daytime) == true -%}
-          {{ state_attr('sensor.daily_forecast', 'forecast')[2].short_forecast }}
-          {% else -%}
-          {{ state_attr('sensor.daily_forecast', 'forecast')[1].short_forecast }}
-          {% endif %}
-      - name: kxxx_short_forecast_2
-        state: >
-          {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
-          {{ state_attr('sensor.daily_forecast', 'forecast')[5].short_forecast }}
-          {% elif (state_attr('sensor.daily_forecast', 'forecast')[0].is_daytime) == true %}
-          {{ state_attr('sensor.daily_forecast', 'forecast')[4].short_forecast }}
-          {% else %}
-          {{ state_attr('sensor.daily_forecast', 'forecast')[3].short_forecast }}
-          {% endif %}
-      - name: kxxx_short_forecast_3
-        state: >
-          {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
-          {{ state_attr('sensor.daily_forecast', 'forecast')[7].short_forecast }}
-          {% elif (state_attr('sensor.daily_forecast', 'forecast')[0].is_daytime) == true %}
-          {{ state_attr('sensor.daily_forecast', 'forecast')[6].short_forecast }}
-          {% else %}
-          {{ state_attr('sensor.daily_forecast', 'forecast')[5].short_forecast }}
-          {% endif %}
-      - name: kxxx_short_forecast_4
-        state: >
-          {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
-          {{ state_attr('sensor.daily_forecast', 'forecast')[9].short_forecast }}
-          {% elif (state_attr('sensor.daily_forecast', 'forecast')[0].is_daytime) == true %}
-          {{ state_attr('sensor.daily_forecast', 'forecast')[8].short_forecast }}
-          {% else %}
-          {{ state_attr('sensor.daily_forecast', 'forecast')[7].short_forecast }}
-          {% endif %}
-      - name: kxxx_short_forecast_5
-        state: >
-          {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
-          {{ state_attr('sensor.daily_forecast', 'forecast')[11].short_forecast }}
-          {% elif (state_attr('sensor.daily_forecast', 'forecast')[0].is_daytime) == true %}
-          {{ state_attr('sensor.daily_forecast', 'forecast')[10].short_forecast }}
-          {% else %}
-          {{ state_attr('sensor.daily_forecast', 'forecast')[9].short_forecast }}
-          {% endif %}
-      - name: kxxx_summary_0
+      - name: kbwi_summary_0
         state: >
           {{ states.sensor.sensor.daily_forecast }}
         attributes:
           detailed_forecast: >-
             {{ state_attr('sensor.daily_forecast', 'forecast')[0].detailed_description | string }}
-      - name: kxxx_summary_1
+      - name: kbwi_summary_1
         state: >
           {{ states.sensor.sensor.daily_forecast }}
         attributes:
@@ -409,7 +363,7 @@ template:
             {% else -%}
             {{ state_attr('sensor.daily_forecast', 'forecast')[1].detailed_description | string }}
             {% endif %}
-      - name: kxxx_summary_2
+      - name: kbwi_summary_2
         state: >
           {{ states.sensor.sensor.daily_forecast }}
         attributes:
@@ -421,7 +375,7 @@ template:
             {% else -%}
             {{ state_attr('sensor.daily_forecast', 'forecast')[3].detailed_description | string }}
             {% endif %}
-      - name: kxxx_summary_3
+      - name: kbwi_summary_3
         state: >
           {{ states.sensor.sensor.daily_forecast }}
         attributes:
@@ -433,7 +387,7 @@ template:
             {% else -%}
             {{ state_attr('sensor.daily_forecast', 'forecast')[5].detailed_description | string }}
             {% endif %}
-      - name: kxxx_summary_4
+      - name: kbwi_summary_4
         state: >
           {{ states.sensor.sensor.daily_forecast }}
         attributes:
@@ -445,7 +399,7 @@ template:
             {% else -%}
             {{ state_attr('sensor.daily_forecast', 'forecast')[7].detailed_description | string }}
             {% endif %}
-      - name: kxxx_summary_5
+      - name: kbwi_summary_5
         state: >
           {{ states.sensor.sensor.daily_forecast }}
         attributes:
@@ -457,3 +411,52 @@ template:
             {% else -%}
             {{ state_attr('sensor.daily_forecast', 'forecast')[9].detailed_description | string }}
             {% endif %}
+
+#  The following sensors are held in reserve until short-forecast entities can be selected from the NWS Integration:
+#      - name: kbwi_short_forecast_0
+#        state: >
+#          {{ state_attr('sensor.daily_forecast', 'forecast')[0].short_forecast }}
+#      - name: kbwi_short_forecast_1
+#        state: >
+#          {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+#          {{ state_attr('sensor.daily_forecast', 'forecast')[3].short_forecast }}
+#          {% elif (state_attr('sensor.daily_forecast', 'forecast')[0].is_daytime) == true -%}
+#          {{ state_attr('sensor.daily_forecast', 'forecast')[2].short_forecast }}
+#          {% else -%}
+#          {{ state_attr('sensor.daily_forecast', 'forecast')[1].short_forecast }}
+#          {% endif %}
+#      - name: kbwi_short_forecast_2
+#        state: >
+#          {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+#          {{ state_attr('sensor.daily_forecast', 'forecast')[5].short_forecast }}
+#          {% elif (state_attr('sensor.daily_forecast', 'forecast')[0].is_daytime) == true %}
+#          {{ state_attr('sensor.daily_forecast', 'forecast')[4].short_forecast }}
+#          {% else %}
+#          {{ state_attr('sensor.daily_forecast', 'forecast')[3].short_forecast }}
+#          {% endif %}
+#      - name: kbwi_short_forecast_3
+#        state: >
+#          {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+#          {{ state_attr('sensor.daily_forecast', 'forecast')[7].short_forecast }}
+#          {% elif (state_attr('sensor.daily_forecast', 'forecast')[0].is_daytime) == true %}
+#          {{ state_attr('sensor.daily_forecast', 'forecast')[6].short_forecast }}
+#          {% else %}
+#          {{ state_attr('sensor.daily_forecast', 'forecast')[5].short_forecast }}
+#          {% endif %}
+#      - name: kbwi_short_forecast_4
+#        state: >
+#          {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+#          {{ state_attr('sensor.daily_forecast', 'forecast')[9].short_forecast }}
+#          {% elif (state_attr('sensor.daily_forecast', 'forecast')[0].is_daytime) == true %}
+#          {{ state_attr('sensor.daily_forecast', 'forecast')[8].short_forecast }}
+#          {% else %}
+#          {{ state_attr('sensor.daily_forecast', 'forecast')[7].short_forecast }}
+#          {% endif %}
+#      - name: kbwi_short_forecast_5
+#        state: >
+#          {% if (state_attr('sensor.daily_forecast', 'forecast')[0].datetime | regex_replace(find='20..-..-...', replace='') | truncate(2,true,'') | int < 6 ) %}
+#          {% elif (state_attr('sensor.daily_forecast', 'forecast')[0].is_daytime) == true %}
+#          {{ state_attr('sensor.daily_forecast', 'forecast')[10].short_forecast }}
+#          {% else %}
+#          {{ state_attr('sensor.daily_forecast', 'forecast')[9].short_forecast }}
+#          {% endif %}
