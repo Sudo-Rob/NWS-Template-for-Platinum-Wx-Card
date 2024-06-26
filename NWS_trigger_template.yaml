@@ -2,7 +2,7 @@
 template:
   - trigger:
       - platform: time_pattern
-        minutes: "/10"
+        minutes: /10
       - platform: homeassistant
         event: start
     action:
