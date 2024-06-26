@@ -41,11 +41,6 @@ template:
           {% endif %}
           {{- FL | round(1) -}}
 
-  #  - sensor:
-  #      - name: current_conditions
-  #        state:
-  #          { { states('sensor.cc_ellicott_city_weather_condition' ) | lower } }
-
   - sensor:
   #Temporary sensor to debug midnight-to-6AM assignments:
   - binary_sensor:
