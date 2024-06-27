@@ -1,3 +1,5 @@
+# Replace "kxxx" entries with your local NWS observation reporting station: https://www.faa.gov/air_traffic/weather/asos
+
 template:
   - sensor:
       # Feels-like temperature sensor template inspired by @masterkenobi:
@@ -10,8 +12,8 @@ template:
       - name: kxxx_feels_like
         state: >-
           {% set T = states('sensor.xxxx_temperature') | float %}
-          {% set RH = state_attr('weather.xxxx', 'humidity') %}
-          {% set WS = state_attr('weather.xxxx', 'wind_speed') %}
+          {% set RH = state_attr('weather.xxxx', 'humidity') | float %}
+          {% set WS = state_attr('weather.xxxx', 'wind_speed') | float %}
           {% set WC = T | float %}
 
           {% if T <= 70 and WS >= 3 %}
