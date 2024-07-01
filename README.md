@@ -1,6 +1,13 @@
 # Here's the to-do list:
 * Using `HACS`, add the `Platinum Weather Card` to your front-end integrations. Be aware it is no longer being maintained.  
-* Replace all `kxxx` entries in the 3 files provided herein with your local NWS observation reporting station code: https://www.faa.gov/air_traffic/weather/asos
+* Replace all `kxxx` entries in the 3 files provided herein with your local NWS observation reporting station code.
+
+  https://www.faa.gov/air_traffic/weather/asos
+
+  Note: The station code will be assigned by the NWS integration if one isn't provided during setup. Refer to the NWS integration service page under `Settings > Devices and services` to see the resolved station code.
+
+  https://rc.home-assistant.io/integrations/nws
+
 * Add the contents of `NWS_trigger_template.yaml` to your `configuration.yaml` file.
 * Add the contents of `weather_modern.yaml` to your HA configuration.  You can add it to `configuration.yaml` or use a split configuration (links below).   If split, ensure you provide any required `!include` directive. 
   
