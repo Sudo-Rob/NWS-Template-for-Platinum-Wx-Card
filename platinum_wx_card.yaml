@@ -18,7 +18,6 @@ entity_humidity: sensor.kxxx_relative_humidity
 entity_pop: sensor.kxxx_precipitation_probability
 entity_pop_1: sensor.kxxx_rain_chance_1
 entity_pressure: sensor.kxxx_sea_level_pressure
-entity_summary: sensor.kxxx_short_forecast_0
 entity_summary_1: sensor.kxxx_summary_1
 entity_sun: sun.sun
 entity_temp_next: sensor.kxxx_daytime_high
