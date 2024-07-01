@@ -2,6 +2,8 @@
 * Using `HACS`, add the `Platinum Weather Card` to your front-end integrations. Be aware it is no longer being maintained.  
 * Replace all `kxxx` entries in the 3 files provided herein with your local NWS observation reporting station code.
 
+  https://www.cnrfc.noaa.gov/metar.php
+  
   https://www.faa.gov/air_traffic/weather/asos
 
   Note: The station code will be assigned by the NWS integration if one isn't provided during setup. Refer to the NWS integration service page under `Settings > Devices and services` to see the resolved station code.
