@@ -16,7 +16,7 @@
   https://www.home-assistant.io/docs/configuration/splitting_configuration/, and/or https://www.home-assistant.io/docs/configuration/packages/
   
 * Navigate to `Developer-tools > YAML` and perform a `CONFIGURATION CHECK`. If good, perform an HA restart, and check the `home-assistant.log` for the absence of errors.
-* Confirm the `Platinum Weather Card` integration is running by navigating to `Settings > Dashboards`, clicking on the stacked dots in the upper right corner, and selecting `Resources`.  The `platinum-weather-card.js` file should be listed.
+* Confirm the `Platinum Weather Card` resource is running by navigating to `Settings > Dashboards`, clicking on the stacked dots in the upper right corner, and selecting `Resources`.  The `platinum-weather-card.js` file should be listed.
 * Navigate to a dashboard and add a `Custom: Platinum Weather Card` to it.  Select `SHOW CODE EDITOR`, delete any existing YAML and replace it with the contents of `platinum_wx_card.yaml`.
 
 ## That should do it!
