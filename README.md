@@ -20,3 +20,18 @@
 * Navigate to a dashboard and add a `Custom: Platinum Weather Card` to it.  Select `SHOW CODE EDITOR`, delete any existing YAML and replace it with the contents of `platinum_wx_card.yaml`.
 
 ## That should do it!
+
+
+###   Notes:
+
+*	The weather_modern.yaml file, while targeted toward the Platinum Weather Card, may work well for other weather cards.  Its main function is to follow the progression of the NWS forecasts which, at certain times, contain three forecast indexes within the same calendar day.  Except for the current near-term textual forecast, which is always at index [0], templates will deliver only the daytime forecasts for the following 6-7 days.  The same function could be expanded to include nighttime forecasts, which assumes there’s an HA UI card that can accommodate the data.
+  
+*	The weather_modern.yaml file was assembled using my limited knowledge of Jinja2.  That said, it’s relatively easy to understand and works well.
+
+*	Regarding the Platinum Weather Card as used with the NWS integration, there are two shortfalls that could be addressed by someone having a good understanding of its source code.
+
+    1.	The changes in the NWS forecasts are seldom at or near the top of each hour.  Currently, the Platinum Weather Card will shift the day-of-the-week legends at midnight.  This will result in a premature shifting of the legends until the NWS midnight forecast arrives.  For NWS, the proper method would be to synchronously tie the shifting of days to the arrival of the midnight forecast.
+
+        There is, however, and additional element relating to correcting the shifting of days.  What occasionally happens is the prior-hour’s NWS forecast reappears within an hour of the latest update.  When this happens after midnight, there should be the ability to revert the legends back to the prior-day forecast.  This should happen naturally if the ordering is strictly a function of datetime[0].
+
+    2.	Per design, the NWS textual forecasts get more verbose as adverse weather conditions approach a configured location.  Sometimes these are beyond the 255-character limit of an entity state.  A better implementation uses entity attributes, which have a much larger limit.  Thankfully, the NWS integration provides textual forecasts as attributes; however, only the Extended Section Forecast is able to use it.  Unfortunately, the blue pop-up tiptool forecasts can only accommodate entities.  
