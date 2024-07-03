@@ -11,9 +11,9 @@ template:
 
       - name: kxxx_feels_like
         state: >-
-          {% set T = states('sensor.xxxx_temperature') | float %}
-          {% set RH = state_attr('weather.xxxx', 'humidity') | float %}
-          {% set WS = state_attr('weather.xxxx', 'wind_speed') | float %}
+          {% set T = states('sensor.kxxx_temperature') | float %}
+          {% set RH = state_attr('weather.kxxx', 'humidity') | float %}
+          {% set WS = state_attr('weather.kxxx', 'wind_speed') | float %}
           {% set WC = T | float %}
 
           {% if T <= 70 and WS >= 3 %}
