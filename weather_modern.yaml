@@ -68,11 +68,16 @@ template:
         state: >
           {{ state_attr('sensor.daily_forecast', 'forecast')[0].detailed_description | truncate(254,true,'…',0) }}
 
-      #       Scrape wind gust speed from detailed forecast (needs debugging)
-      - name: kxxx_wind_gust
+    # Scrape wind gust speed from detailed forecast (needs debugging)
+      - name: kxxx_wind_gust_scrape
         state: >
-          {{ state_attr('sensor.daily_forecast', 'forecast')[0].detailed_description | regex_findall_index(find='with gusts as high as .. mph') | regex_findall_index("\d+(?= mph)") if value is search('^\d{2}$') else 0 }}
-          {{ (value | regex_findall_index('^\d{2}$')) if value is search('^\d{2}$') else 0 }}
+          {% set gust_in = state_attr('sensor.daily_forecast', 'forecast')[0].detailed_description %}
+          {% set gust_numbers = gust_in | regex_findall("(?<=gusts as high as )\d+(?= mph)") | map('int') | list %}
+          {% if gust_numbers | length > 0 %}
+              {{ gust_numbers[0] }}  {# Assuming we want the first matched number; adjust as needed #}
+          {% else %}
+              0
+          {% endif %}
 
       - name: kxxx_precipitation_probability
         unit_of_measurement: "%"
