@@ -1,8 +1,9 @@
 # Append this to configuration.yaml
+
 template:
   - trigger:
       - platform: time_pattern
-        minutes: /10
+        minutes: "/5"
       - platform: homeassistant
         event: start
     action:
@@ -10,12 +11,22 @@ template:
         data:
           type: twice_daily
         target:
-          entity_id: weather.kxxx
+          entity_id: weather.kbwi_daynight
         response_variable: daily
+      - action: nws.get_forecasts_extra
+        data:
+          type: twice_daily
+        target:
+          entity_id: weather.kbwi_daynight
+        response_variable: weather_forecast
     sensor:
-      - name: Daily Forecast
-        unique_id: daily_forecast
-        state: "{{ now().isoformat() }}"
-        icon: mdi:hours-24
+      - name: kbwi daynight
+        state: "{{ states('weather.kbwi_daynight') }}"
+        icon: mdi:weather-cloudy
         attributes:
-          forecast: "{{ daily['weather.kxxx'].forecast }}"
+          forecast: "{{ daily['weather.kbwi_daynight'].forecast }}"
+      - name: kbwi daynight extra
+        state:  "{{ states('weather.kbwi_daynight') }}"
+        icon: mdi:weather-cloudy
+        attributes:
+          forecast: "{{ weather_forecast['weather.kbwi_daynight'].forecast }}"
