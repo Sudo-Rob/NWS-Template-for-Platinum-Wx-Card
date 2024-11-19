@@ -11,22 +11,22 @@ template:
         data:
           type: twice_daily
         target:
-          entity_id: weather.kbwi_daynight
+          entity_id: weather.kxxx_daynight
         response_variable: daily
       - action: nws.get_forecasts_extra
         data:
           type: twice_daily
         target:
-          entity_id: weather.kbwi_daynight
+          entity_id: weather.kxxx
         response_variable: weather_forecast
     sensor:
-      - name: kbwi daynight
-        state: "{{ states('weather.kbwi_daynight') }}"
+      - name: kxxx daynight
+        state: "{{ states('weather.kxxx_daynight') }}"
         icon: mdi:weather-cloudy
         attributes:
-          forecast: "{{ daily['weather.kbwi_daynight'].forecast }}"
-      - name: kbwi daynight extra
-        state:  "{{ states('weather.kbwi_daynight') }}"
+          forecast: "{{ daily['weather.kxxx_daynight'].forecast }}"
+      - name: kxxx daynight extra
+        state:  "{{ states('weather.kxxx_daynight') }}"
         icon: mdi:weather-cloudy
         attributes:
-          forecast: "{{ weather_forecast['weather.kbwi_daynight'].forecast }}"
+          forecast: "{{ weather_forecast['weather.kxxx_daynight'].forecast }}"
