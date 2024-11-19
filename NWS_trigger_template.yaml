@@ -11,7 +11,7 @@ template:
         data:
           type: twice_daily
         target:
-          entity_id: weather.kxxx_daynight
+          entity_id: weather.kxxx
         response_variable: daily
       - action: nws.get_forecasts_extra
         data:
@@ -20,13 +20,15 @@ template:
           entity_id: weather.kxxx
         response_variable: weather_forecast
     sensor:
-      - name: kxxx daynight
-        state: "{{ states('weather.kxxx_daynight') }}"
-        icon: mdi:weather-cloudy
+      - name: Daily Forecast
+        unique_id: daily_forecast
+        state: "{{ now().isoformat() }}"
+        icon: mdi:hours-24
         attributes:
-          forecast: "{{ daily['weather.kxxx_daynight'].forecast }}"
-      - name: kxxx daynight extra
-        state:  "{{ states('weather.kxxx_daynight') }}"
-        icon: mdi:weather-cloudy
+          forecast: "{{ daily['weather.kxxx'].forecast }}"
+      - name: Daily Forecast Extra
+        unique_id: daily_forecast_extra
+        state: "{{ now().isoformat() }}"
+        icon: mdi:hours-24
         attributes:
-          forecast: "{{ weather_forecast['weather.kxxx_daynight'].forecast }}"
+          forecast: "{{ weather_forecast['weather.kxxx'].forecast }}"
